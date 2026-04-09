@@ -1,5 +1,6 @@
 from datetime import datetime, date, time, timedelta
 from gcsa.event import Event
+from tzlocal import get_localzone
 
 from calendar_tools.client import CalendarClient
 from calendar_tools.classify import enrich_event, classify_event
@@ -7,17 +8,19 @@ from calendar_tools.config import load_routine_config
 
 
 def _ensure_datetime(d):
-    """Convert a date to datetime if needed (start of day)."""
+    """Convert a date to datetime if needed (start of day). Always returns timezone-aware."""
     if isinstance(d, datetime):
+        if d.tzinfo is None:
+            return d.replace(tzinfo=get_localzone())
         return d
-    return datetime.combine(d, time.min)
+    return datetime.combine(d, time.min, tzinfo=get_localzone())
 
 
 def _end_of_day(d):
-    """Get end-of-day datetime for a date."""
+    """Get end-of-day datetime for a date. Always returns timezone-aware."""
     if isinstance(d, datetime):
         d = d.date()
-    return datetime.combine(d, time(23, 59, 59))
+    return datetime.combine(d, time(23, 59, 59), tzinfo=get_localzone())
 
 
 # ── Read operations ──────────────────────────────────────────────
@@ -110,10 +113,11 @@ def find_open_slots(
     else:
         target_date = date.today()
 
+    local_tz = get_localzone()
     if not time_min:
-        time_min = datetime.combine(target_date, time(work_hours[0], 0))
+        time_min = datetime.combine(target_date, time(work_hours[0], 0), tzinfo=local_tz)
     if not time_max:
-        time_max = datetime.combine(target_date, time(work_hours[1], 0))
+        time_max = datetime.combine(target_date, time(work_hours[1], 0), tzinfo=local_tz)
 
     events = list(client.calendar.get_events(time_min=time_min, time_max=time_max, order_by="startTime", single_events=True))
 
