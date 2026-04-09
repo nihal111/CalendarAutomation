@@ -1,0 +1,26 @@
+# Routine event classification patterns
+# Events matching these patterns will be tagged as routine
+
+routine:
+  # Keywords in event titles (case-insensitive substring match)
+  title_keywords:
+    - "shuttle"
+    - "commute"
+    - "gym"
+    - "standup"
+    - "daily standup"
+    - "go to office"
+    - "lunch"
+    - "breakfast"
+    - "dinner"
+    - "morning routine"
+    - "wind down"
+
+  # If an event is recurring AND matches one of these keywords, it's routine.
+  # Some recurring events (e.g., weekly 1:1s) are NOT routine — they're important.
+  # So recurrence alone doesn't make something routine; it's a signal combined with keywords.
+  recurring_is_routine: false
+
+  # Calendar IDs or names that are entirely routine
+  # (e.g., a "Personal Habits" calendar)
+  routine_calendars: []
