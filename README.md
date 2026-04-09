@@ -52,7 +52,7 @@ create_event(client, "Deep work", start=slots[0]["start"], end=slots[0]["end"])
 |---|---|
 | `get_events(client, day=None, time_min=None, time_max=None)` | Fetch all events for a day or time range. Returns enriched dicts with routine classification. |
 | `get_non_routine_events(client, day=None)` | Fetch only non-routine events — filters out commutes, gym, standups, etc. |
-| `daily_briefing(client, day=None)` | Structured briefing with all events, routine/non-routine breakdown, and open slots. |
+| `daily_briefing(client, day=None)` | Structured briefing with all events, routine/non-routine breakdown, and open slots. For `day=today`, includes only ongoing/upcoming events. |
 
 ### Writing events
 

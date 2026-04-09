@@ -23,6 +23,11 @@ def _end_of_day(d):
     return datetime.combine(d, time(23, 59, 59), tzinfo=get_localzone())
 
 
+def _now_local():
+    """Current system time in local timezone."""
+    return datetime.now(get_localzone())
+
+
 # ── Read operations ──────────────────────────────────────────────
 
 
@@ -94,6 +99,7 @@ def find_open_slots(
     time_max=None,
     min_duration_minutes: int = 30,
     work_hours=(9, 18),
+    from_now: bool = False,
 ):
     """Find open time slots in the calendar.
 
@@ -118,6 +124,9 @@ def find_open_slots(
         time_min = datetime.combine(target_date, time(work_hours[0], 0), tzinfo=local_tz)
     if not time_max:
         time_max = datetime.combine(target_date, time(work_hours[1], 0), tzinfo=local_tz)
+
+    if from_now and target_date == date.today():
+        time_min = max(time_min, _now_local())
 
     events = list(client.calendar.get_events(time_min=time_min, time_max=time_max, order_by="startTime", single_events=True))
 
@@ -170,11 +179,16 @@ def daily_briefing(client: CalendarClient, day: date = None):
         - open_slots: available time windows
     """
     day = day or date.today()
-    all_events = get_events(client, day=day)
+    if day == date.today():
+        now = _now_local()
+        all_events = get_events(client, time_min=now, time_max=_end_of_day(day))
+        open_slots = find_open_slots(client, day=day, from_now=True)
+    else:
+        all_events = get_events(client, day=day)
+        open_slots = find_open_slots(client, day=day)
 
     routine = [e for e in all_events if e["routine"]]
     non_routine = [e for e in all_events if not e["routine"]]
-    open_slots = find_open_slots(client, day=day)
 
     return {
         "date": day,
