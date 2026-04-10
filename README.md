@@ -2,11 +2,14 @@
 
 A Python toolkit for reading, writing, and reasoning about your Google Calendar. Built to power a personal calendar assistant — get daily briefings, find open slots, create events, and automatically classify routine vs. important events.
 
+> Note: Documentation examples must use placeholder names/emails only (no real personal identifiers).
+
 ## Features
 
 - **Daily briefings** — Get a structured overview of your day: events, open slots, and what needs your attention.
 - **Smart availability** — Find free windows in your schedule, constrained to your working hours.
 - **Event management** — Create, update, and delete Google Calendar events programmatically.
+- **Contact resolution** — Use attendee names or aliases in write operations; names resolve to emails via local contacts.
 - **Routine classification** — Automatically tags events like gym, commute, and standup as routine so you can focus on what matters. Fully configurable via YAML.
 
 ## Quick Start
@@ -42,6 +45,15 @@ slots = find_open_slots(client, min_duration_minutes=60)
 
 # Block off focus time
 create_event(client, "Deep work", start=slots[0]["start"], end=slots[0]["end"])
+
+# Names resolve through .local/contacts.yaml
+create_event(
+    client,
+    "Game Night",
+    start=slots[0]["start"],
+    end=slots[0]["end"],
+    attendees=["Contact Person"],  # resolves to contact@example.com
+)
 ```
 
 ## API Reference
@@ -58,9 +70,43 @@ create_event(client, "Deep work", start=slots[0]["start"], end=slots[0]["end"])
 
 | Function | Description |
 |---|---|
-| `create_event(client, summary, start, end, **kwargs)` | Create a new event. Supports `location`, `description`, and other Google Calendar fields. |
-| `update_event(client, event_id, **changes)` | Update an existing event by ID. |
+| `create_event(client, summary, start, end, **kwargs)` | Create a new event. Supports `location`, `description`, and other Google Calendar fields. `attendees` can be emails or contact names/aliases. Invite emails are sent (`send_updates="all"`). |
+| `update_event(client, event_id, **changes)` | Update an existing event by ID. `attendees` can be emails or contact names/aliases. Invite/update emails are sent (`send_updates="all"`). |
 | `delete_event(client, event_id)` | Delete an event by ID. |
+
+### Contacts
+
+Contact handling is first-class in code, while private contact data stays local.
+
+- Logic and schema are in-repo:
+  - `calendar_tools/contacts.py`
+  - `config/contacts.schema.yaml`
+  - `config/contacts.example.yaml`
+- Personal contacts are local-only:
+  - `.local/contacts.yaml` (gitignored)
+
+Schema:
+
+```yaml
+version: 1
+contacts:
+  - canonical_name: "Contact Person"
+    email: "contact@example.com"
+    aliases:
+      - "contact"
+```
+
+Public API:
+
+- `upsert_contact(canonical_name, email, aliases=None)` to add/update contacts.
+- `resolve_contact_email(name_or_email)` and `resolve_contact_emails([...])` for name lookup.
+- `load_contacts()` to inspect configured contacts.
+
+Write-path details:
+
+- Contact names are resolved to emails via `.local/contacts.yaml`.
+- Resolved attendee emails are converted to `gcsa.attendee.Attendee` objects before writes.
+- This conversion is required for `update_event(...)` because GCSA update serialization expects attendee objects, not raw email strings.
 
 ### Availability
 
@@ -94,11 +140,14 @@ CalendarAutomation/
   calendar_tools/
     __init__.py          # Public API exports
     client.py            # CalendarClient (wraps gcsa)
+    contacts.py          # Contact schema, storage, and name-to-email resolution
     tools.py             # All calendar operations
     classify.py          # Routine vs non-routine classification
     config.py            # YAML config loading
   config/
     routine_patterns.yaml  # Classification rules
+    contacts.schema.yaml   # Canonical contacts schema
+    contacts.example.yaml  # Example contacts file
   setup_auth.py          # Interactive OAuth setup
   requirements.txt
 ```

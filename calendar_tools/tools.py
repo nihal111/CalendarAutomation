@@ -1,10 +1,12 @@
 from datetime import datetime, date, time, timedelta
+from gcsa.attendee import Attendee
 from gcsa.event import Event
 from tzlocal import get_localzone
 
 from calendar_tools.client import CalendarClient
 from calendar_tools.classify import enrich_event, classify_event
 from calendar_tools.config import load_routine_config
+from calendar_tools.contacts import resolve_contact_emails
 
 
 def _ensure_datetime(d):
@@ -56,6 +58,26 @@ def get_non_routine_events(client: CalendarClient, day: date = None, **kwargs):
 # ── Write operations ─────────────────────────────────────────────
 
 
+def _resolve_attendees(kwargs: dict):
+    attendees = kwargs.get("attendees")
+    if not attendees:
+        return kwargs
+
+    if not isinstance(attendees, list):
+        raise ValueError("attendees must be a list of contact names and/or email addresses")
+
+    resolved = resolve_contact_emails(attendees)
+    out = dict(kwargs)
+    out["attendees"] = resolved
+    return out
+
+
+def _coerce_attendees_to_objects(value):
+    if not isinstance(value, list):
+        raise ValueError("attendees must be a list of contact names and/or email addresses")
+    return [a if isinstance(a, Attendee) else Attendee(a) for a in value]
+
+
 def create_event(client: CalendarClient, summary: str, start, end, **kwargs):
     """Create a new calendar event.
 
@@ -65,8 +87,11 @@ def create_event(client: CalendarClient, summary: str, start, end, **kwargs):
         end: datetime for event end
         **kwargs: Additional Event fields (location, description, etc.)
     """
+    kwargs = _resolve_attendees(kwargs)
+    if "attendees" in kwargs:
+        kwargs["attendees"] = _coerce_attendees_to_objects(kwargs["attendees"])
     event = Event(summary=summary, start=start, end=end, **kwargs)
-    return client.calendar.add_event(event)
+    return client.calendar.add_event(event, send_updates="all")
 
 
 def update_event(client: CalendarClient, event_id: str, **changes):
@@ -78,10 +103,13 @@ def update_event(client: CalendarClient, event_id: str, **changes):
         event_id: The Google Calendar event ID
         **changes: Fields to update (summary, start, end, location, description, etc.)
     """
+    changes = _resolve_attendees(changes)
+    if "attendees" in changes:
+        changes["attendees"] = _coerce_attendees_to_objects(changes["attendees"])
     event = client.calendar.get_event(event_id)
     for key, value in changes.items():
         setattr(event, key, value)
-    return client.calendar.update_event(event)
+    return client.calendar.update_event(event, send_updates="all")
 
 
 def delete_event(client: CalendarClient, event_id: str):

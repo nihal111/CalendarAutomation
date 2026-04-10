@@ -1,10 +1,11 @@
 import unittest
 from datetime import date, datetime, time
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
+from gcsa.attendee import Attendee
 from tzlocal import get_localzone
 
-from calendar_tools.tools import daily_briefing, _end_of_day
+from calendar_tools.tools import create_event, daily_briefing, update_event, _end_of_day
 
 
 class TestDailyBriefing(unittest.TestCase):
@@ -32,6 +33,48 @@ class TestDailyBriefing(unittest.TestCase):
 
         mock_get_events.assert_called_once_with(client, day=target_day)
         mock_find_open_slots.assert_called_once_with(client, day=target_day)
+
+
+class TestAttendeeResolutionInWrites(unittest.TestCase):
+    def test_create_event_resolves_attendees(self):
+        client = Mock()
+        start = datetime(2026, 4, 10, 9, 0, tzinfo=get_localzone())
+        end = datetime(2026, 4, 10, 10, 0, tzinfo=get_localzone())
+
+        with patch("calendar_tools.tools.resolve_contact_emails", return_value=["contact@example.com"]) as resolver, patch(
+            "calendar_tools.tools.Event"
+        ) as event_cls:
+            create_event(
+                client,
+                summary="Game Night",
+                start=start,
+                end=end,
+                attendees=["Contact Person"],
+            )
+
+        resolver.assert_called_once_with(["Contact Person"])
+        event_cls.assert_called_once()
+        _, kwargs = event_cls.call_args
+        self.assertEqual(len(kwargs["attendees"]), 1)
+        self.assertIsInstance(kwargs["attendees"][0], Attendee)
+        self.assertEqual(kwargs["attendees"][0].email, "contact@example.com")
+        client.calendar.add_event.assert_called_once()
+        _, add_kwargs = client.calendar.add_event.call_args
+        self.assertEqual(add_kwargs["send_updates"], "all")
+
+    def test_update_event_resolves_attendees(self):
+        event = Mock()
+        client = Mock()
+        client.calendar.get_event.return_value = event
+
+        with patch("calendar_tools.tools.resolve_contact_emails", return_value=["contact@example.com"]) as resolver:
+            update_event(client, "event123", attendees=["Contact Person"])
+
+        resolver.assert_called_once_with(["Contact Person"])
+        self.assertEqual(len(event.attendees), 1)
+        self.assertIsInstance(event.attendees[0], Attendee)
+        self.assertEqual(event.attendees[0].email, "contact@example.com")
+        client.calendar.update_event.assert_called_once_with(event, send_updates="all")
 
 
 if __name__ == "__main__":
