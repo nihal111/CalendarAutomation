@@ -3,6 +3,7 @@ from datetime import date, datetime, time
 from unittest.mock import Mock, patch
 
 from gcsa.attendee import Attendee
+from gcsa.reminders import PopupReminder
 from tzlocal import get_localzone
 
 from calendar_tools.tools import create_event, daily_briefing, update_event, _end_of_day
@@ -85,16 +86,15 @@ class TestAttendeeResolutionInWrites(unittest.TestCase):
             create_event(client, summary="Deep Work", start=start, end=end)
 
         _, kwargs = event_cls.call_args
-        self.assertEqual(
-            kwargs["reminders"],
-            {"useDefault": False, "overrides": [{"method": "popup", "minutes": 30}]},
-        )
+        self.assertEqual(len(kwargs["reminders"]), 1)
+        self.assertIsInstance(kwargs["reminders"][0], PopupReminder)
+        self.assertEqual(kwargs["reminders"][0].minutes_before_start, 30)
 
     def test_create_event_preserves_explicit_reminders(self):
         client = Mock()
         start = datetime(2026, 4, 10, 9, 0, tzinfo=get_localzone())
         end = datetime(2026, 4, 10, 10, 0, tzinfo=get_localzone())
-        custom_reminders = {"useDefault": False, "overrides": [{"method": "popup", "minutes": 10}]}
+        custom_reminders = [PopupReminder(minutes_before_start=10)]
 
         with patch("calendar_tools.tools.Event") as event_cls:
             create_event(

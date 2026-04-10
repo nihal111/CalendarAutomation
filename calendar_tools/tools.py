@@ -1,6 +1,7 @@
 from datetime import datetime, date, time, timedelta
 from gcsa.attendee import Attendee
 from gcsa.event import Event
+from gcsa.reminders import PopupReminder
 from tzlocal import get_localzone
 
 from calendar_tools.client import CalendarClient
@@ -91,10 +92,7 @@ def create_event(client: CalendarClient, summary: str, start, end, **kwargs):
     if "attendees" in kwargs:
         kwargs["attendees"] = _coerce_attendees_to_objects(kwargs["attendees"])
     if "reminders" not in kwargs:
-        kwargs["reminders"] = {
-            "useDefault": False,
-            "overrides": [{"method": "popup", "minutes": 30}],
-        }
+        kwargs["reminders"] = [PopupReminder(minutes_before_start=30)]
     event = Event(summary=summary, start=start, end=end, **kwargs)
     return client.calendar.add_event(event, send_updates="all")
 
