@@ -90,6 +90,11 @@ def create_event(client: CalendarClient, summary: str, start, end, **kwargs):
     kwargs = _resolve_attendees(kwargs)
     if "attendees" in kwargs:
         kwargs["attendees"] = _coerce_attendees_to_objects(kwargs["attendees"])
+    if "reminders" not in kwargs:
+        kwargs["reminders"] = {
+            "useDefault": False,
+            "overrides": [{"method": "popup", "minutes": 30}],
+        }
     event = Event(summary=summary, start=start, end=end, **kwargs)
     return client.calendar.add_event(event, send_updates="all")
 

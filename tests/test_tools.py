@@ -76,6 +76,38 @@ class TestAttendeeResolutionInWrites(unittest.TestCase):
         self.assertEqual(event.attendees[0].email, "contact@example.com")
         client.calendar.update_event.assert_called_once_with(event, send_updates="all")
 
+    def test_create_event_sets_default_30_minute_popup_reminder(self):
+        client = Mock()
+        start = datetime(2026, 4, 10, 9, 0, tzinfo=get_localzone())
+        end = datetime(2026, 4, 10, 10, 0, tzinfo=get_localzone())
+
+        with patch("calendar_tools.tools.Event") as event_cls:
+            create_event(client, summary="Deep Work", start=start, end=end)
+
+        _, kwargs = event_cls.call_args
+        self.assertEqual(
+            kwargs["reminders"],
+            {"useDefault": False, "overrides": [{"method": "popup", "minutes": 30}]},
+        )
+
+    def test_create_event_preserves_explicit_reminders(self):
+        client = Mock()
+        start = datetime(2026, 4, 10, 9, 0, tzinfo=get_localzone())
+        end = datetime(2026, 4, 10, 10, 0, tzinfo=get_localzone())
+        custom_reminders = {"useDefault": False, "overrides": [{"method": "popup", "minutes": 10}]}
+
+        with patch("calendar_tools.tools.Event") as event_cls:
+            create_event(
+                client,
+                summary="Deep Work",
+                start=start,
+                end=end,
+                reminders=custom_reminders,
+            )
+
+        _, kwargs = event_cls.call_args
+        self.assertEqual(kwargs["reminders"], custom_reminders)
+
 
 if __name__ == "__main__":
     unittest.main()
