@@ -1,0 +1,6 @@
+version: 1
+contacts:
+  - canonical_name: "Lavanya"
+    email: "lavanya@example.com"
+    aliases:
+      - "lav"

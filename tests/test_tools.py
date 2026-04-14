@@ -53,7 +53,7 @@ class TestAttendeeResolutionInWrites(unittest.TestCase):
                 attendees=["Contact Person"],
             )
 
-        resolver.assert_called_once_with(["Contact Person"])
+        resolver.assert_called_once_with(["Contact Person"], auto_save=True)
         event_cls.assert_called_once()
         _, kwargs = event_cls.call_args
         self.assertEqual(len(kwargs["attendees"]), 1)
@@ -71,7 +71,7 @@ class TestAttendeeResolutionInWrites(unittest.TestCase):
         with patch("calendar_tools.tools.resolve_contact_emails", return_value=["contact@example.com"]) as resolver:
             update_event(client, "event123", attendees=["Contact Person"])
 
-        resolver.assert_called_once_with(["Contact Person"])
+        resolver.assert_called_once_with(["Contact Person"], auto_save=True)
         self.assertEqual(len(event.attendees), 1)
         self.assertIsInstance(event.attendees[0], Attendee)
         self.assertEqual(event.attendees[0].email, "contact@example.com")

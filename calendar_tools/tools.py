@@ -67,7 +67,7 @@ def _resolve_attendees(kwargs: dict):
     if not isinstance(attendees, list):
         raise ValueError("attendees must be a list of contact names and/or email addresses")
 
-    resolved = resolve_contact_emails(attendees)
+    resolved = resolve_contact_emails(attendees, auto_save=True)
     out = dict(kwargs)
     out["attendees"] = resolved
     return out

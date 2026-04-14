@@ -7,3 +7,4 @@ token.pickle
 credentials.json
 .venv/
 venv/
+.local/

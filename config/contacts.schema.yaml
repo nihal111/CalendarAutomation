@@ -1,0 +1,13 @@
+version: 1
+contacts:
+  - canonical_name: "Display Name"
+    email: "name@example.com"
+    aliases:
+      - "nickname"
+      - "spoken variant"
+
+notes:
+  - "All contacts live in .local/contacts.yaml (gitignored)."
+  - "canonical_name must be unique (case-insensitive)."
+  - "aliases are optional, but recommended for voice/spelling variants."
+  - "Each alias must map to exactly one email across all contacts."
