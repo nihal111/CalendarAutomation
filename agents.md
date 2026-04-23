@@ -182,6 +182,26 @@ ValueError: Unknown contact 'Pravin'. Either:
 ### Classification
 Events are classified as **routine** or **non-routine** based on `config/routine_patterns.yaml`. Routine = background noise (commutes, gym, standups). Non-routine = needs attention.
 
+## Authentication
+
+### Files
+- `credentials.json` — OAuth client (app identity): Client ID + Secret from Google Cloud Console. Not a true secret for Desktop-type clients per [Google's OAuth docs](https://developers.google.com/identity/protocols/oauth2/native-app), but still gitignored.
+- `token.pickle` — Per-user access + refresh token. What actually authenticates API calls. Gitignored.
+
+### Ephemeral-port auth flow
+`CalendarClient` passes `authentication_flow_port=0` to `gcsa.GoogleCalendar`, which lets the OS pick a free port for the OAuth redirect server. This avoids collisions with services bound to common ports (e.g. whisper on 8080). `setup_auth.py` does the same. Desktop-type OAuth clients accept any localhost port because the registered redirect is `http://localhost` without a specific port.
+
+### 7-day refresh token expiry (Testing mode)
+If `token.pickle` dies with `invalid_grant: Token has been expired or revoked` on a ~weekly cadence, the OAuth consent screen is in **Testing** mode — Google force-expires refresh tokens every 7 days in that state. Fix by clicking **Publish app** on https://console.cloud.google.com/apis/credentials/consent. Single-user apps with sensitive scopes do not require Google verification.
+
+### Recovery paths
+- **Token expired/revoked only**: `rm token.pickle && python -c "from calendar_tools import CalendarClient; CalendarClient()"`.
+- **Client also missing** (e.g. pruned by Google after long inactivity): create a new OAuth client in the Cloud Console, then `rm credentials.json token.pickle && python setup_auth.py`.
+
+### Claude Code guidance
+- If a script fails with `invalid_grant` or `RefreshError`, don't suppress it — surface the error, tell the user to re-auth, and offer to run the re-auth command for them.
+- Never write `credentials.json` directly from chat unless the user explicitly asks (the client secret is low-sensitivity but still shouldn't sit in transcripts by default).
+
 ## Testing
 
 ```bash

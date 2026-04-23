@@ -24,11 +24,27 @@ pip install -r requirements.txt
 
 You'll need a Google Cloud project with the [Calendar API](https://console.cloud.google.com/apis/library/calendar-json.googleapis.com) enabled.
 
+**One-time Google Cloud setup:**
+
+1. **Enable the Calendar API** — https://console.cloud.google.com/apis/library/calendar-json.googleapis.com → **Enable**.
+2. **Configure the OAuth consent screen** — https://console.cloud.google.com/apis/credentials/consent
+   - User type: **External**.
+   - Fill app name + support emails; skip scopes (gcsa requests them at runtime).
+   - Click **Publish app** → **Confirm**. This is critical: apps left in "Testing" expire refresh tokens every **7 days**, forcing you to re-auth weekly. Published single-user apps with sensitive scopes don't need Google verification.
+3. **Create an OAuth client** — https://console.cloud.google.com/apis/credentials → **Create Credentials** → **OAuth client ID** → **Desktop app**. Copy the Client ID and Client Secret.
+
+**Run the setup script:**
+
 ```bash
 python setup_auth.py
 ```
 
-This walks you through pasting your OAuth client ID and secret, then opens a browser for Google sign-in. It generates `credentials.json` and `token.pickle` locally — both are gitignored and never leave your machine.
+Paste the Client ID and Secret when prompted. A browser tab opens for Google sign-in — if you see an "unverified app" warning, click **Advanced** → **Go to \<app name\> (unsafe)** → **Allow** (safe for your own project). `credentials.json` and `token.pickle` are written locally — both are gitignored.
+
+**Notes:**
+- The auth flow uses an ephemeral local port (OS-chosen), so it won't collide with anything already running on 8080 or another common port.
+- If `token.pickle` later errors with `invalid_grant: Token has been expired or revoked`, delete it and re-run `python setup_auth.py` (or just `python -c "from calendar_tools import CalendarClient; CalendarClient()"`). If this happens on a ~7-day cadence, your consent screen is still in Testing — go back to step 2 and Publish.
+- Google may prune OAuth clients after ~6 months of inactivity. If your Client ID disappears from the console, create a new one and re-run setup.
 
 ### 3. Use it
 

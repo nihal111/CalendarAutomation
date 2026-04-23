@@ -73,6 +73,7 @@ def run_auth_flow():
         gc = GoogleCalendar(
             credentials_path=CREDENTIALS_PATH,
             token_path=TOKEN_PATH,
+            authentication_flow_port=0,
         )
         # Trigger auth by making a simple request
         list(gc.get_events(time_min=datetime(2020, 1, 1), time_max=datetime(2020, 1, 1, 0, 1)))
