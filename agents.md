@@ -202,6 +202,39 @@ If `token.pickle` dies with `invalid_grant: Token has been expired or revoked` o
 - If a script fails with `invalid_grant` or `RefreshError`, don't suppress it — surface the error, tell the user to re-auth, and offer to run the re-auth command for them.
 - Never write `credentials.json` directly from chat unless the user explicitly asks (the client secret is low-sensitivity but still shouldn't sit in transcripts by default).
 
+## Bulk contact imports
+
+### Gmail frequent recipients
+
+`scripts/import_frequent_recipients.py` scans the Sent folder, counts `To`/`Cc` recipients, and prompts for interactive import into `.local/contacts.yaml`.
+
+- Uses a **separate** OAuth token (`gmail_token.pickle`) with `gmail.readonly` scope so the Calendar token is untouched.
+- First run triggers its own browser consent; subsequent runs reuse the token.
+- Depends on the Gmail API being enabled in the same Google Cloud project as `credentials.json`.
+- Automated addresses (`unsubscribe@`, `bounce@`, transactional senders) surface in the ranked list — skip by not selecting them during the interactive prompt.
+- Contacts are added via `upsert_contact` using the Gmail display name as `canonical_name`. First-name aliases are **not** added automatically — call `upsert_contact(name, email, aliases=[first_name])` afterwards if the user refers to someone by first name.
+
+**Agent guidance:**
+
+- When the user asks to "import my frequent contacts" or similar, run with `--dry-run` first, show the ranked list, and confirm which rows to import before writing.
+- Before importing, flag ambiguous rows: multiple entries with the same first name, addresses that look like the user's own alternate accounts, and automated/bot addresses.
+- After importing, offer to add aliases for people the user refers to by first name.
+
+### Calendar collaborators
+
+`scripts/import_calendar_contacts.py` scans events over a lookback window and ranks attendees + organizers by shared-event count. Drops into the same interactive-selection flow as the Gmail importer.
+
+- Reuses the existing Calendar `token.pickle` — **no extra OAuth consent** needed.
+- Each row is tagged with a `roles` set: `organizer`, `attendee`, or both.
+- Calendar feeds commonly contain group aliases and bot senders (meeting-room calendars, scheduling tools, shared team inboxes). Flag these during review before importing.
+- Default thresholds are looser than the Gmail import (`--months 24`, `--min-count 2`) because calendar events are fewer in volume than emails.
+
+**Agent guidance:**
+
+- Always run `--dry-run` first and surface the ranked list.
+- When multiple people map to the same email (rare) or one person maps to multiple emails (common across work/personal addresses), ask the user which to keep as canonical and which to add as aliases.
+- If the Gmail-import and calendar-import both find the same person under different display names or emails, merge manually — call `upsert_contact` with the preferred canonical and list the alternate email as a second contact or surface the conflict to the user.
+
 ## Testing
 
 ```bash

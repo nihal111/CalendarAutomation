@@ -72,6 +72,81 @@ create_event(
 )
 ```
 
+## Importing frequent contacts from Gmail
+
+`scripts/import_frequent_recipients.py` scans your Sent folder over a configurable lookback, counts recipients on `To:`/`Cc:` headers, and lets you interactively pick which to add to `.local/contacts.yaml`.
+
+**One-time setup** (separate from the Calendar auth):
+
+1. Enable the [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com) in the same Google Cloud project that backs your `credentials.json`.
+2. First run will open a browser for a one-time consent (Gmail read-only scope). The token is saved to `gmail_token.pickle` — `*.pickle` is gitignored.
+
+**Run:**
+
+```bash
+# Preview only — no writes
+python3 scripts/import_frequent_recipients.py --dry-run
+
+# Default: last 12 months, min 3 sends
+python3 scripts/import_frequent_recipients.py
+
+# Deeper history, stricter threshold
+python3 scripts/import_frequent_recipients.py --months 60 --min-count 5
+
+# Cap the list
+python3 scripts/import_frequent_recipients.py --top 50
+```
+
+The script prints a ranked table (`#`, count, last-sent date, name, email), marks entries already in your contacts, and prompts for which rows to import. You can enter:
+
+- individual numbers (`1,3,7`)
+- ranges (`1-10,15,20-25`)
+- `all` or `none`
+
+For each selected row it calls `upsert_contact` with the Gmail display name as the canonical name and the email address. Automated / bounce addresses (unsubscribe links, bank notifications, etc.) will show up in the list — skip those by not including them in your selection. Add first-name aliases afterwards with `upsert_contact` if you want to resolve by first name.
+
+**Flags:**
+
+| Flag | Default | Description |
+|---|---|---|
+| `--months` | `12` | Lookback window in months |
+| `--min-count` | `3` | Minimum sends required to appear in the list |
+| `--top` | (none) | Cap the ranked list at top N |
+| `--dry-run` | off | Print the table and exit without prompting |
+
+## Importing frequent calendar collaborators
+
+`scripts/import_calendar_contacts.py` is the calendar-side counterpart. It scans your events over a configurable lookback, counts people you share events with (as attendees or organizers), and offers the same interactive-import UX.
+
+**No extra auth** — it reuses the existing Calendar OAuth token (`token.pickle`).
+
+**Run:**
+
+```bash
+# Preview only
+python3 scripts/import_calendar_contacts.py --dry-run
+
+# Default: last 24 months, min 2 shared events
+python3 scripts/import_calendar_contacts.py
+
+# Wider net / stricter threshold
+python3 scripts/import_calendar_contacts.py --months 36 --min-count 1
+python3 scripts/import_calendar_contacts.py --min-count 5
+```
+
+The ranked table adds a `roles` column showing whether the person appeared as `organizer`, `attendee`, or both. Interactive selection uses the same syntax as the Gmail import (`1,3,7`, `1-10`, `all`, `none`).
+
+**Flags:**
+
+| Flag | Default | Description |
+|---|---|---|
+| `--months` | `24` | Lookback window in months |
+| `--min-count` | `2` | Minimum shared events required to appear |
+| `--top` | (none) | Cap the ranked list at top N |
+| `--dry-run` | off | Print the table and exit without prompting |
+
+Calendar scans commonly surface group aliases (e.g. `team@example.com`) and bot-style addresses alongside real people — review the list before importing.
+
 ## API Reference
 
 ### Reading events
